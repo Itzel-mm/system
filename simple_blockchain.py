@@ -12,10 +12,16 @@ class Block:
         self.hash = self.calculate_hash()
 
     def calculate_hash(self):
-        block_string = json.dumps(self.__dict__, sort_keys=True).encode()
+        block_dict = {
+            "index": self.index,
+            "timestamp": self.timestamp,
+            "data": self.data,
+            "previous_hash": self.previous_hash,
+            "nonce": self.nonce
+        }
+        block_string = json.dumps(block_dict, sort_keys=True).encode()
         return hashlib.sha256(block_string).hexdigest()
 
-    # PoW 挖矿：找到前缀满足 difficulty 个 0 的 hash
     def mine_block(self, difficulty):
         while self.hash[:difficulty] != "0" * difficulty:
             self.nonce += 1
@@ -46,7 +52,6 @@ class Blockchain:
             f.write(f"{block.index},{block.timestamp},{block.data},{block.hash},{block.previous_hash},{block.nonce}\n")
 
     def load_chain_from_file(self):
-        """拓展实验1：从本地文件加载区块链"""
         self.chain = []
         try:
             with open("blockchain.txt", "r") as f:
@@ -60,29 +65,29 @@ class Blockchain:
                     b.timestamp = float(ts)
                     b.hash = h
                     self.chain.append(b)
-            print("成功从文件加载区块链！")
+            print("【加载成功】从文件恢复区块链")
         except FileNotFoundError:
-            print("文件不存在，新建一条链")
+            print("【提示】文件不存在，新建链，生成创世区块")
             self.create_block("Genesis Block")
 
     def print_chain(self):
         for block in self.chain:
-            print(f"Index: {block.index}, Timestamp: {block.timestamp}, Data: {block.data}, Hash: {block.hash}, Previous Hash: {block.previous_hash}, Nonce: {block.nonce}")
+            print(f"Index:{block.index}, Data:{block.data}, Hash:{block.hash[:12]}...")
 
     def is_chain_valid(self):
         for i in range(1, len(self.chain)):
-            current_block = self.chain[i]
-            prev_block = self.chain[i-1]
-            if current_block.hash != current_block.calculate_hash():
-                print(f"区块{i}哈希被篡改！")
+            curr = self.chain[i]
+            prev = self.chain[i-1]
+            if curr.hash != curr.calculate_hash():
+                print(f"校验失败：区块{i}哈希不匹配")
                 return False
-            if current_block.previous_hash != prev_block.hash:
-                print(f"区块{i}和前一区块链接断裂！")
+            if curr.previous_hash != prev.hash:
+                print(f"校验失败：区块{i}与上一块断裂")
                 return False
-            if current_block.hash[:self.difficulty] != "0" * self.difficulty:
-                print(f"区块{i}没有通过工作量证明！")
+            if curr.hash[:self.difficulty] != "0" * self.difficulty:
+                print(f"校验失败：区块{i}未通过PoW")
                 return False
-        print("整条区块链完整没有被篡改")
+        print("校验通过，区块链合法")
         return True
 
 
@@ -90,12 +95,7 @@ if __name__ == "__main__":
     bc = Blockchain()
     bc.load_chain_from_file()
 
-    # 需要新增区块的时候，再取消下面两行注释
-    # bc.create_block("First block data")
-    # bc.create_block("Second block data")
+    # 测试3：仅从文件加载，不新增、不篡改
 
     bc.print_chain()
     bc.is_chain_valid()
-
-    # 模拟篡改测试，测试篡改时再取消注释
-    # bc.chain[1].data = "I am hacked!!!"
